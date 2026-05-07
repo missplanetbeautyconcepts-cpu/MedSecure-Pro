@@ -3,6 +3,7 @@ import { Modal } from "./Modal";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Lock } from "lucide-react";
+import { getErrorMessage } from "../../services/api";
 
 interface ReAuthModalProps {
   isOpen: boolean;
@@ -33,7 +34,7 @@ export function ReAuthModal({
       setPassword("");
       onClose();
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Authentication failed. Please try again.");
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

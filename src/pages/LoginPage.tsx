@@ -6,6 +6,7 @@ import { useUIStore } from "../store/uiStore";
 import { apiService } from "../services/api";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
+import { getErrorMessage } from "../services/api";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -29,7 +30,7 @@ export default function LoginPage() {
       navigate("/");
     } catch (err: any) {
       console.error(err);
-      setError("Invalid username or password. Please try again.");
+      setError(getErrorMessage(err));
       addToast("Login failed", "error");
     } finally {
       setIsLoading(false);

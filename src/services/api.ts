@@ -35,26 +35,46 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Helper to extract a readable error message
+export const getErrorMessage = (error: any): string => {
+  if (typeof error === "string") return error;
+  
+  if (error.response?.data?.detail) {
+    const detail = error.response.data.detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      // Handle FastAPI validation error list
+      return detail.map(d => `${d.loc.join(".")}: ${d.msg}`).join("; ");
+    }
+    return JSON.stringify(detail);
+  }
+
+  if (error.response?.data?.message) return error.response.data.message;
+  if (error.message) return error.message;
+  
+  return "An unexpected error occurred.";
+};
+
 // Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (!error.response) {
-      console.error("Network error: Cannot connect to server. Check your connection.");
-      // You might want to handle this with a toast, but since this is the service, 
-      // we'll just log and let the UI handle it via catch blocks or query error states.
-      return Promise.reject(new Error("Network error: Cannot connect to server. Check your connection."));
+      const message = "Cannot connect to server. Check your connection or VPN.";
+      console.error("Network error:", error);
+      return Promise.reject(new Error(message));
     }
 
-    const { status } = error.response;
+    const { status, data } = error.response;
+    console.error(`API Error ${status}:`, data);
 
     if (status === 401) {
       useAuthStore.getState().logout();
-      window.location.href = "/login";
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
     } else if (status === 403) {
       window.location.href = "/access-denied";
-    } else if (status === 500) {
-      console.error("A server error occurred. Please try again or contact admin.");
     }
     
     return Promise.reject(error);
@@ -67,6 +87,9 @@ export const apiService = {
     const formData = new URLSearchParams();
     formData.append("username", credentials.username.trim());
     formData.append("password", credentials.password.trim());
+    formData.append("grant_type", "password");
+    formData.append("scope", "");
+    
     const response = await api.post<LoginResponse>("/token", formData, {
       headers: { 
         "Content-Type": "application/x-www-form-urlencoded",
