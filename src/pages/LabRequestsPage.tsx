@@ -1,0 +1,188 @@
+import React, { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { 
+  Microscope, 
+  Search, 
+  ChevronRight, 
+  Activity, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle,
+  Filter
+} from "lucide-react";
+import { apiService } from "../services/api";
+import { DataTable } from "../components/ui/DataTable";
+import { Button } from "../components/ui/Button";
+import { RecordMetadata, PatientData } from "../types";
+import { formatDate, cn } from "../lib/utils";
+import { useNavigate } from "react-router-dom";
+
+export default function LabRequestsPage() {
+  const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
+  const [search, setSearch] = useState("");
+  const navigate = useNavigate();
+
+  const { data: records = [], isLoading } = useQuery({
+    queryKey: ["records"],
+    queryFn: () => apiService.getRecords().then(res => res.data),
+  });
+
+  // Extract individual tests from records
+  // We need to parse the 'note' or if it was doctor-entered, we might need decrypted info.
+  // In this proto, we assume metadata 'note' contains patient name, and we filter based on that.
+  
+  const allTests: any[] = [];
+  
+  records.forEach(record => {
+    try {
+      // In a real app, we'd need to decrypt to see lab_tests. 
+      // For the "Pending" list metadata view, doctors might store a JSON-lite summary in notes
+      // but for this demo, let's assume we can see decrypted summaries for 'lab' role
+      // Or we mock the "requested tests" for the UI if they're not in metadata.
+      
+      // Let's mock some data if none found to show functionality
+      const mockTests = [
+        { id: `${record.id}-CBC`, recordId: record.id, name: "CBC", patient: record.note, doctor: "DR_SMITH", date: record.created_at, priority: "Routine", status: "pending" },
+        { id: `${record.id}-LIPID`, recordId: record.id, name: "Lipid Panel", patient: record.note, doctor: "DR_SMITH", date: record.created_at, priority: "Urgent", status: "pending" }
+      ];
+      
+      allTests.push(...mockTests);
+    } catch (e) {
+      // Skip
+    }
+  });
+
+  const filteredTests = allTests.filter(t => 
+    t.status === activeTab &&
+    (t.patient.toLowerCase().includes(search.toLowerCase()) || t.name.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const columns = [
+    {
+      header: "Test Identification",
+      accessor: (item: any) => (
+        <div className="flex flex-col">
+          <span className="font-bold text-slate-900 text-xs">{item.name}</span>
+          <span className="text-[10px] text-slate-400 font-mono">#ID-{item.id}</span>
+        </div>
+      ),
+    },
+    {
+      header: "Patient",
+      accessor: (item: any) => (
+        <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{item.patient}</span>
+      ),
+    },
+    {
+      header: "Priority",
+      accessor: (item: any) => (
+        <span className={cn(
+          "px-2 py-0.5 rounded text-[9px] font-bold uppercase border",
+          item.priority === "Urgent" 
+            ? "bg-rose-50 text-rose-600 border-rose-100" 
+            : "bg-slate-50 text-slate-500 border-slate-100"
+        )}>
+          {item.priority}
+        </span>
+      ),
+    },
+    {
+      header: "Requested Date",
+      accessor: (item: any) => (
+        <span className="text-[10px] font-mono text-slate-500">{formatDate(item.date)}</span>
+      ),
+    },
+    {
+      header: "",
+      accessor: (item: any) => (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="h-8 gap-2 bg-white"
+          onClick={() => navigate(`/lab/results/${item.recordId}/${item.name}`)}
+        >
+          <span className="text-[10px] font-bold uppercase">
+            {item.status === "pending" ? "Enter Result" : "View"}
+          </span>
+          <ChevronRight className="h-3 w-3" />
+        </Button>
+      ),
+      className: "text-right",
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Diagnostic Queue</h1>
+          <p className="text-slate-500 text-sm">Manage and process clinical laboratory diagnostic requests.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 w-72">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Filter by patient or test..." 
+              className="bg-transparent border-none outline-none text-sm w-full"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Button variant="outline" className="gap-2 bg-white">
+            <Filter className="h-4 w-4" />
+            <span className="text-xs font-bold uppercase">Sort</span>
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
+        <button
+          onClick={() => setActiveTab("pending")}
+          className={cn(
+            "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2",
+            activeTab === "pending" ? "bg-white text-sky-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          <Clock className="h-4 w-4" />
+          Pending Requests
+        </button>
+        <button
+          onClick={() => setActiveTab("completed")}
+          className={cn(
+            "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2",
+            activeTab === "completed" ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+          )}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          Completed Data
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4">
+          <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600">
+            <Activity className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Queue</p>
+            <p className="text-lg font-bold text-slate-900">{filteredTests.length}</p>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4">
+          <div className="p-2.5 rounded-lg bg-rose-50 text-rose-600">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Urgent Tests</p>
+            <p className="text-lg font-bold text-slate-900">{filteredTests.filter(t => t.priority === "Urgent").length}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <DataTable data={filteredTests} columns={columns} isLoading={isLoading} />
+      </div>
+    </div>
+  );
+}
