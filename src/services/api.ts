@@ -65,10 +65,13 @@ export const apiService = {
   // Auth
   login: async (credentials: LoginCredentials) => {
     const formData = new URLSearchParams();
-    formData.append("username", credentials.username);
-    formData.append("password", credentials.password);
+    formData.append("username", credentials.username.trim());
+    formData.append("password", credentials.password.trim());
     const response = await api.post<LoginResponse>("/token", formData, {
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: { 
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json"
+      },
     });
     return response.data;
   },
