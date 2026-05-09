@@ -77,7 +77,7 @@ export default function App() {
           </div>
           <div className="absolute -inset-4 border border-sky-500/20 rounded-3xl animate-ping" />
         </div>
-        <h1 className="text-xl font-bold tracking-widest uppercase mb-2">MedSafe Core</h1>
+        <h1 className="text-xl font-bold tracking-widest uppercase mb-2">MedSecure Pro</h1>
         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mb-4">Initializing Secure Environment</p>
         <div className="w-48 h-1 bg-slate-800 rounded-full overflow-hidden">
           <div className="h-full bg-sky-500 animate-[loading-bar_2s_infinite_linear]" style={{
