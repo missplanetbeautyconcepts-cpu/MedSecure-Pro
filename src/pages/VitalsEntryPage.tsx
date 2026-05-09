@@ -82,13 +82,7 @@ export default function VitalsEntryPage() {
     hr: h.hr,
     temp: h.temp,
     bp: parseInt(h.bp?.split('/')[0] || "0")
-  })) || [
-    { time: "08:00", hr: 72, temp: 98.6, bp: 120 },
-    { time: "10:00", hr: 75, temp: 98.8, bp: 122 },
-    { time: "12:00", hr: 80, temp: 99.1, bp: 125 },
-    { time: "14:00", hr: 78, temp: 98.9, bp: 121 },
-    { time: "current", hr: vitalsData.heart_rate, temp: vitalsData.temperature, bp: 120 },
-  ];
+  })) || [];
 
   const handleSave = async (reauth: ReAuthRequest) => {
     setIsLoading(true);
@@ -303,25 +297,27 @@ export default function VitalsEntryPage() {
             </div>
 
             <div className="space-y-4">
-              {[
-                { time: "14:00", type: "Telemetry Update", nurse: "NURSE_77", hr: 78, bp: "121/79" },
-                { time: "12:00", type: "Full Assessment", nurse: "NURSE_42", hr: 80, bp: "125/82" },
-                { time: "10:00", type: "Routine Check", nurse: "NURSE_77", hr: 75, bp: "122/80" },
-              ].map((log, i) => (
-                <div key={i} className="flex gap-4 group">
-                  <div className="flex flex-col items-center">
-                    <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-sky-500 transition-colors" />
-                    <div className="w-px h-full bg-slate-100" />
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-[10px] font-bold text-slate-900 uppercase">{log.type}</p>
-                      <span className="text-[10px] font-mono text-slate-400">{log.time}</span>
+              {realHistory && realHistory.length > 0 ? (
+                realHistory.slice(0, 5).map((log: any, i: number) => (
+                  <div key={i} className="flex gap-4 group">
+                    <div className="flex flex-col items-center">
+                      <div className="h-2 w-2 rounded-full bg-slate-200 group-hover:bg-sky-500 transition-colors" />
+                      <div className="w-px h-full bg-slate-100" />
                     </div>
-                    <p className="text-xs text-slate-500">Recorded by <span className="font-bold text-[10px] uppercase">{log.nurse}</span> • HR: {log.hr} BPM • BP: {log.bp}</p>
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-[10px] font-bold text-slate-900 uppercase">TELEMETRY ENTRY</p>
+                        <span className="text-[10px] font-mono text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-xs text-slate-500">Record: {log.bp} BP • {log.hr} BPM • {log.temp}°F</p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-xs text-slate-400 italic">No historical data available for this record.</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

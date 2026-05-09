@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Plus, 
@@ -41,7 +41,15 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
   const { user } = useAuthStore();
   
   const isNurse = user?.role === "nurse";
-  const data: PatientData = JSON.parse(record.plaintext);
+  const data: PatientData = useMemo(() => {
+    try {
+      if (typeof record.plaintext === "object") return record.plaintext as unknown as PatientData;
+      return JSON.parse(record.plaintext);
+    } catch (e) {
+      console.error("Failed to parse patient data:", e);
+      return { patient_name: "Error Parsing Data", age: 0 } as PatientData;
+    }
+  }, [record.plaintext]);
 
   const handleUpdateNote = async (reauth: ReAuthRequest) => {
     setIsUpdating(true);
@@ -161,11 +169,11 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Blood Type</p>
-                <p className="font-bold text-slate-900">{data.bio_data?.blood_type || "A+"}</p>
+                <p className="font-bold text-slate-900">{data.bio_data?.blood_type || "N/A"}</p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Allergies</p>
-                <p className="font-bold text-rose-600 truncate">{data.bio_data?.allergies || "None Disclosed"}</p>
+                <p className="font-bold text-rose-600 truncate">{data.bio_data?.allergies || "Not Recorded"}</p>
               </div>
             </div>
             
@@ -183,19 +191,19 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
               <div className="grid grid-cols-4 gap-4">
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase">BP</p>
-                  <p className="text-sm font-bold text-slate-900">{data.vitals?.blood_pressure || "120/80"}</p>
+                  <p className="text-sm font-bold text-slate-900">{data.vitals?.blood_pressure || "N/A"}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase">Heart Rate</p>
-                  <p className="text-sm font-bold text-slate-900">{data.vitals?.heart_rate || 72} BPM</p>
+                  <p className="text-sm font-bold text-slate-900">{data.vitals?.heart_rate ? `${data.vitals.heart_rate} BPM` : "N/A"}</p>
                 </div>
                 <div className="text-center">
-                   <p className="text-[9px] font-bold text-slate-400 uppercase">Temp</p>
-                   <p className="text-sm font-bold text-slate-900">{data.vitals?.temperature || 98.6}°F</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">Temp</p>
+                  <p className="text-sm font-bold text-slate-900">{data.vitals?.temperature ? `${data.vitals.temperature}°F` : "N/A"}</p>
                 </div>
                 <div className="text-center">
                    <p className="text-[9px] font-bold text-slate-400 uppercase">Respiration</p>
-                   <p className="text-sm font-bold text-slate-900">{data.vitals?.respiratory_rate || 16}/m</p>
+                   <p className="text-sm font-bold text-slate-900">{data.vitals?.respiratory_rate ? `${data.vitals.respiratory_rate}/m` : "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -269,10 +277,10 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
             <div className="relative h-48 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center overflow-hidden">
                {/* Visual placeholder for a graph */}
                <div className="absolute inset-x-0 bottom-0 top-1/2 bg-sky-500/5 border-t border-sky-500/20" />
-               <div className="relative z-10 text-center">
-                 <Activity className="h-8 w-8 text-sky-200 mx-auto mb-2 animate-pulse" />
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Telemetry Feed Offline</p>
-                 <p className="text-[9px] text-slate-400 mt-1">Real-time vitals monitoring requires hospital network bridge.</p>
+               <div className="relative z-10 text-center px-6">
+                 <Activity className="h-8 w-8 text-sky-200 mx-auto mb-2" />
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Historical Telemetry</p>
+                 <p className="text-[9px] text-slate-400 mt-1 italic">Vitals history is being migrated to the new telemetry core. Historical data for this record is currently unavailable in this view.</p>
                </div>
             </div>
             <div className="space-y-3">

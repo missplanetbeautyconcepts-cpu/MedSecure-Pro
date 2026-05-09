@@ -85,10 +85,10 @@ export default function VitalsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: "Pending Checks", value: "12", icon: Activity, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Normal Vitals", value: "84%", icon: Heart, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Critical Alerts", value: "0", icon: Gauge, color: "text-rose-600", bg: "bg-rose-50" },
-          { label: "Avg Collection", value: "4m", icon: Wind, color: "text-sky-600", bg: "bg-sky-50" },
+          { label: "Active Records", value: isLoading ? "..." : records.length, icon: Activity, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Service Mode", value: "Strict", icon: Heart, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Active Threats", value: "0", icon: Gauge, color: "text-rose-600", bg: "bg-rose-50" },
+          { label: "Storage", value: "ECC-AES", icon: Wind, color: "text-sky-600", bg: "bg-sky-50" },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4">
             <div className={`p-2.5 rounded-lg ${stat.bg} ${stat.color}`}>

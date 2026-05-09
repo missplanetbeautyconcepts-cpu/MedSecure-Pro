@@ -193,6 +193,10 @@ export default function App() {
             />
           </Route>
 
+          <Route path="/admin" element={<Navigate to="/admin/users" replace />} />
+          <Route path="/admin/user" element={<Navigate to="/admin/users" replace />} />
+          <Route path="/reports" element={<Navigate to="/records" replace />} />
+
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

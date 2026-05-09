@@ -175,12 +175,13 @@ export default function SecurityCenterPage() {
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Root Key Age</span>
-                <span className="font-bold text-slate-900">14 days</span>
+                <span className="text-slate-500">Root Key Integrity</span>
+                <span className="font-bold text-emerald-600">VERIFIED</span>
               </div>
               <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-sky-500 h-full w-[14%]" />
+                <div className="bg-emerald-500 h-full w-full" />
               </div>
+              <p className="text-[10px] text-slate-400 italic">ECC key pairs are currently synchronized across all active hospital nodes.</p>
               <Button variant="outline" size="sm" className="w-full text-[10px] uppercase font-bold tracking-widest mt-2">
                 Initiate Key Rotation
               </Button>

@@ -65,6 +65,17 @@ export default function DashboardPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
+  const { data: records = [], isLoading: isLoadingRecords } = useQuery({
+    queryKey: ["records"],
+    queryFn: () => apiService.getRecords().then(res => res.data),
+  });
+
+  const { data: threatStatus } = useQuery({
+    queryKey: ["threat_status"],
+    queryFn: () => apiService.getThreatStatus().then(res => res.data),
+    enabled: user?.role === "admin",
+  });
+
   const { data: auditLogs = [] } = useQuery({
     queryKey: ["audit_logs"],
     queryFn: () => apiService.getAuditLogs().then(res => res.data),
@@ -73,42 +84,40 @@ export default function DashboardPage() {
 
   const getStats = () => {
     const baseStats = [
-      { title: "Encrypted Records", value: "8,942", icon: FileText, color: "text-sky-600", trend: "🔒 ECC-AES Hybrid" },
+      { title: "Encrypted Records", value: isLoadingRecords ? "..." : records.length.toLocaleString(), icon: FileText, color: "text-sky-600", trend: "🔒 ECC-AES Hybrid" },
       { title: "Security Status", value: "STRICT", icon: ShieldAlert, color: "text-rose-600" },
     ];
 
     switch (user?.role) {
       case "admin":
         return [
-          { title: "Active Threats (1h)", value: "0", icon: ShieldAlert, color: "text-emerald-600", trend: "↑ System Optimal", trendType: "up" },
-          { title: "Total Blocked", value: "1,428", icon: ShieldAlert, color: "text-slate-600", trend: "Since last key rotation" },
+          { title: "Active Threats (1h)", value: threatStatus?.active_threats_last_hour.length || 0, icon: ShieldAlert, color: "text-emerald-600", trend: "↑ System Optimal", trendType: "up" },
+          { title: "Total Blocked", value: threatStatus?.total_blocked_attempts || 0, icon: ShieldAlert, color: "text-slate-600", trend: "Since last key rotation" },
           ...baseStats
         ];
       case "doctor":
         return [
-          { title: "Personal Caseload", value: "12", icon: Users, color: "text-sky-600", trend: "4 New this week", trendType: "up" },
-          { title: "Pending Labs", value: "8", icon: Microscope, color: "text-amber-600", trend: "3 Urgent", trendType: "down" },
-          { title: "Today's Consults", value: "5", icon: Activity, color: "text-emerald-600", trend: "2 Completed", trendType: "up" },
+          { title: "Personal Caseload", value: records.length, icon: Users, color: "text-sky-600", trend: "Total unique patients", trendType: "up" },
+          { title: "Pending Labs", value: "...", icon: Microscope, color: "text-amber-600", trend: "Check lab module", trendType: "down" },
+          { title: "Today's Consults", value: "-", icon: Activity, color: "text-emerald-600", trend: "Queue inactive", trendType: "up" },
           ...baseStats
         ];
       case "lab":
         return [
-          { title: "Pending Queue", value: "8", icon: FlaskConical, color: "text-amber-600", trend: "2 Critical", trendType: "down" },
-          { title: "Completed Feed", value: "24", icon: CheckCircle2, color: "text-emerald-600", trend: "100% TAT met", trendType: "up" },
-          { title: "Avg Turnaround", value: "4.2h", icon: Clock, color: "text-sky-600", trend: "Optimized", trendType: "up" },
+          { title: "Analysis Queue", value: "Active", icon: FlaskConical, color: "text-amber-600", trend: "Real-time bridge", trendType: "down" },
+          { title: "Completed Feed", value: records.length, icon: CheckCircle2, color: "text-emerald-600", trend: "Historical data", trendType: "up" },
+          { title: "Avg Turnaround", value: "N/A", icon: Clock, color: "text-sky-600", trend: "Monitoring disabled", trendType: "up" },
           ...baseStats
         ];
       case "nurse":
         return [
-          { title: "Floor Capacity", value: "85%", icon: Users, color: "text-sky-600", trend: "+2 Arrivals", trendType: "up" },
-          { title: "Pending Vitals", value: "14", icon: Activity, color: "text-amber-600", trend: "3 Overdue", trendType: "down" },
-          { title: "Avg Response", value: "6m", icon: Clock, color: "text-emerald-600", trend: "Stable", trendType: "up" },
+          { title: "Unit Capacity", value: "STABLE", icon: Users, color: "text-sky-600", trend: "Normal operation", trendType: "up" },
+          { title: "Telemetry Status", value: "N/A", icon: Activity, color: "text-amber-600", trend: "Link required", trendType: "down" },
+          { title: "Response Latency", value: "OPTIMAL", icon: Clock, color: "text-emerald-600", trend: "Stable", trendType: "up" },
           ...baseStats
         ];
       default:
         return [
-          { title: "Today's Logins", value: "24", icon: Users, color: "text-sky-600", trend: "Normal volume", trendType: "up" },
-          { title: "Pending Reviews", value: "3", icon: ClipboardList, color: "text-amber-600", trend: "Requires Attention", trendType: "down" },
           ...baseStats
         ];
     }

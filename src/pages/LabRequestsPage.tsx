@@ -36,8 +36,11 @@ export default function LabRequestsPage() {
 
   const isLoading = isLoadingPending || isLoadingRecords;
 
-  const filteredTests = (activeTab === "pending" ? pendingTests : []).filter((t: any) => 
-    (t.patient_name?.toLowerCase().includes(search.toLowerCase()) || t.test_name?.toLowerCase().includes(search.toLowerCase()))
+  const filteredTests = (activeTab === "pending" ? pendingTests : records).filter((t: any) => 
+    (t.patient_name?.toLowerCase().includes(search.toLowerCase()) || 
+     t.test_name?.toLowerCase().includes(search.toLowerCase()) ||
+     t.note?.toLowerCase().includes(search.toLowerCase()) ||
+     t.id?.toString().includes(search))
   );
 
   const columns = [
