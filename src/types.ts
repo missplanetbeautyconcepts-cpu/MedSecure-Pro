@@ -28,7 +28,10 @@ export interface LoginCredentials {
 }
 
 export interface ReAuthRequest {
+  username: string;
   password: string;
+  role: string;
+  reauth_password: string;
 }
 
 // Records (Server-side encrypted)

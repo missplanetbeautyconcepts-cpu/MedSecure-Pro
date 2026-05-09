@@ -104,7 +104,12 @@ export const apiService = {
   // Users
   getUsers: () => api.get<User[]>("/users"),
   createUser: (data: any, reauth: ReAuthRequest) => 
-    api.post("/users/create", { ...data, ...reauth }),
+    api.post<User>("/users/create", { 
+      username: data.username.trim(),
+      password: data.password.trim(),
+      role: data.role,
+      reauth_password: reauth.reauth_password.trim() 
+    }),
 
   // Records
   getRecords: () => api.get<RecordMetadata[]>("/records"),

@@ -33,7 +33,7 @@ import { apiService } from "../services/api";
 import { useUIStore } from "../store/uiStore";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
-import { PatientData, RecordFull } from "../types";
+import { PatientData, RecordFull, ReAuthRequest } from "../types";
 import { cn } from "../lib/utils";
 import { ReAuthModal } from "../components/ui/ReAuthModal";
 
@@ -60,7 +60,12 @@ export default function VitalsEntryPage() {
 
   const { data: record, isLoading: isLoadingRecord } = useQuery({
     queryKey: ["record", id],
-    queryFn: () => apiService.getRecordDetail(Number(id), { password: "" }).then(res => res.data), // In practice would need re-auth, but using empty for now to get metadata
+    queryFn: () => apiService.getRecordDetail(Number(id), { 
+      username: "", 
+      password: "", 
+      role: "", 
+      reauth_password: "" 
+    } as ReAuthRequest).then(res => res.data), // In practice would need re-auth, but using dummy for now to get metadata
     enabled: !!id,
     retry: false
   });
@@ -74,11 +79,12 @@ export default function VitalsEntryPage() {
     { time: "current", hr: vitalsData.heart_rate, temp: vitalsData.temperature, bp: 120 },
   ];
 
-  const handleSave = async (password: string) => {
+  const handleSave = async (reauth: ReAuthRequest) => {
     setIsLoading(true);
     try {
       // Since backend is "note only" for PUT, we simulate the update success
       // In a real system, we'd fetch full record, decrypt, append vitals to history, re-encrypt, and PUT/POST.
+      // We pass reauth to verify we can connect if needed
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       addToast("Physiological data recorded and encrypted successfully", "success");

@@ -21,6 +21,7 @@ import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { cn } from "../lib/utils";
 import { ReAuthModal } from "../components/ui/ReAuthModal";
+import { ReAuthRequest } from "../types";
 
 export default function LabResultEntryPage() {
   const { recordId, testName } = useParams();
@@ -40,11 +41,16 @@ export default function LabResultEntryPage() {
 
   const { data: record, isLoading: isLoadingRecord } = useQuery({
     queryKey: ["record", recordId],
-    queryFn: () => apiService.getRecordDetail(Number(recordId), { password: "" }).then(res => res.data),
+    queryFn: () => apiService.getRecordDetail(Number(recordId), { 
+      username: "", 
+      password: "", 
+      role: "", 
+      reauth_password: "" 
+    } as ReAuthRequest).then(res => res.data),
     retry: false
   });
 
-  const handleSubmit = async (password: string) => {
+  const handleSubmit = async (reauth: ReAuthRequest) => {
     setIsLoading(true);
     try {
       // Simulate encrypted commit

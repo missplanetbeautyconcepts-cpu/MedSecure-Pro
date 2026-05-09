@@ -6,6 +6,7 @@ import { useUIStore } from "../store/uiStore";
 import { Button } from "../components/ui/Button";
 import { ReAuthModal } from "../components/ui/ReAuthModal";
 import { formatDate } from "../lib/utils";
+import { ReAuthRequest } from "../types";
 
 export default function KeyManagementPage() {
   const [isReAuthOpen, setIsReAuthOpen] = useState(false);
@@ -17,8 +18,8 @@ export default function KeyManagementPage() {
     queryFn: () => apiService.getServerPubKey().then(res => res.data),
   });
 
-  const onConfirmRotation = async (password: string) => {
-    await apiService.rotateKeys({ password });
+  const onConfirmRotation = async (reauth: ReAuthRequest) => {
+    await apiService.rotateKeys(reauth);
     addToast("Cryptographic keys rotated successfully", "success");
     queryClient.invalidateQueries({ queryKey: ["server_pub_key"] });
   };

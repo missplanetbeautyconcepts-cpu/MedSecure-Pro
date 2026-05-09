@@ -14,7 +14,8 @@ import {
   Microscope,
   Stethoscope,
   ShieldAlert,
-  Activity
+  Activity,
+  CheckCircle2
 } from "lucide-react";
 import { motion } from "motion/react";
 import { apiService } from "../services/api";
@@ -25,7 +26,7 @@ import { Input } from "../components/ui/Input";
 import { DataTable } from "../components/ui/DataTable";
 import { Modal } from "../components/ui/Modal";
 import { ReAuthModal } from "../components/ui/ReAuthModal";
-import { RecordMetadata, RecordFull, PatientData } from "../types";
+import { RecordMetadata, RecordFull, PatientData, ReAuthRequest } from "../types";
 import { formatDate, cn } from "../lib/utils";
 
 function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => void }) {
@@ -42,10 +43,10 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
   const isNurse = user?.role === "nurse";
   const data: PatientData = JSON.parse(record.plaintext);
 
-  const handleUpdateNote = async (password: string = "") => {
+  const handleUpdateNote = async (reauth: ReAuthRequest) => {
     setIsUpdating(true);
     try {
-      await apiService.updateRecord(record.id, { note }, { password });
+      await apiService.updateRecord(record.id, { note }, reauth);
       addToast("Record metadata updated successfully", "success");
       queryClient.invalidateQueries({ queryKey: ["records"] });
       setIsEditingNote(false);
@@ -65,7 +66,7 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
     { id: "vitals", label: "Vitals History", icon: Activity, roles: ["admin", "doctor", "nurse"] },
   ] as const;
 
-  const tabs = allTabs.filter(t => (t.roles as string[]).includes(user?.role || ""));
+  const tabs = allTabs.filter(t => (t.roles as readonly string[]).includes(user?.role || ""));
 
   // Ensure default tab is allowed
   useEffect(() => {
@@ -321,14 +322,14 @@ export default function MedicalRecordsPage() {
     setIsReAuthOpen(true);
   };
 
-  const onReAuthConfirm = async (password: string) => {
+  const onReAuthConfirm = async (reauth: ReAuthRequest) => {
     if (!selectedRecordId) return;
 
     if (reAuthAction === "view") {
-      const response = await apiService.getRecordFull(selectedRecordId, { password });
+      const response = await apiService.getRecordFull(selectedRecordId, reauth);
       setViewingRecord(response.data);
     } else if (reAuthAction === "delete") {
-      await apiService.deleteRecord(selectedRecordId, { password });
+      await apiService.deleteRecord(selectedRecordId, reauth);
       addToast("Record deleted successfully", "success");
       queryClient.invalidateQueries({ queryKey: ["records"] });
     }

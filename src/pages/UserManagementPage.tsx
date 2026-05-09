@@ -9,7 +9,7 @@ import { Input } from "../components/ui/Input";
 import { DataTable } from "../components/ui/DataTable";
 import { Modal } from "../components/ui/Modal";
 import { ReAuthModal } from "../components/ui/ReAuthModal";
-import { User, UserRole } from "../types";
+import { User, UserRole, ReAuthRequest } from "../types";
 
 export default function UserManagementPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -114,14 +114,14 @@ function CreateUserModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     setIsReAuthOpen(true);
   };
 
-  const onConfirmCreate = async (reauthPassword: string) => {
+  const onConfirmCreate = async (reauth: ReAuthRequest) => {
     setIsLoading(true);
     try {
       await apiService.createUser({
         username,
         password,
         role
-      }, { password: reauthPassword });
+      }, reauth);
       
       addToast(`User ${username} provisioned successfully`, "success");
       queryClient.invalidateQueries({ queryKey: ["users"] });

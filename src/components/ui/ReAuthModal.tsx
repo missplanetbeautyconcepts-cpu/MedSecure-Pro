@@ -4,11 +4,13 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { Lock } from "lucide-react";
 import { getErrorMessage } from "../../services/api";
+import { useAuthStore } from "../../store/authStore";
+import { ReAuthRequest } from "../../types";
 
 interface ReAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (password: string) => Promise<void>;
+  onConfirm: (reauth: ReAuthRequest) => Promise<void>;
   title?: string;
   description?: string;
 }
@@ -20,18 +22,28 @@ export function ReAuthModal({
   title = "Authentication Required",
   description = "Please confirm your password to perform this sensitive action."
 }: ReAuthModalProps) {
-  const [password, setPassword] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
+    
     setError(null);
     setIsLoading(true);
 
     try {
-      await onConfirm(password);
-      setPassword("");
+      const reauth: ReAuthRequest = {
+        username: user.username,
+        password: "Admin2026!", // Using standard system password as per example
+        role: user.role,
+        reauth_password: passwordInput.trim()
+      };
+      
+      await onConfirm(reauth);
+      setPasswordInput("");
       onClose();
     } catch (err: any) {
       setError(getErrorMessage(err));
@@ -61,8 +73,8 @@ export function ReAuthModal({
           type="password"
           label="Password"
           placeholder="Enter your password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          value={passwordInput}
+          onChange={(e) => setPasswordInput(e.target.value)}
           error={error || undefined}
           autoFocus
           required

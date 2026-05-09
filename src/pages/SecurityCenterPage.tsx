@@ -15,6 +15,7 @@ import { Button } from "../components/ui/Button";
 import { ReAuthModal } from "../components/ui/ReAuthModal";
 import { DataTable } from "../components/ui/DataTable";
 import { formatDate, cn } from "../lib/utils";
+import { ReAuthRequest } from "../types";
 
 export default function SecurityCenterPage() {
   const [isReAuthOpen, setIsReAuthOpen] = useState(false);
@@ -34,8 +35,8 @@ export default function SecurityCenterPage() {
     setIsReAuthOpen(true);
   };
 
-  const onReAuthConfirm = async (password: string) => {
-    await apiService.simulateAttack({ attack_type: simulationType }, { password });
+  const onReAuthConfirm = async (reauth: ReAuthRequest) => {
+    await apiService.simulateAttack({ attack_type: simulationType }, reauth);
     addToast(`Attack simulation [${simulationType}] triggered`, "info");
     queryClient.invalidateQueries({ queryKey: ["threat_status"] });
   };
