@@ -43,18 +43,32 @@ export default function LabResultEntryPage() {
     queryKey: ["record", recordId],
     queryFn: () => apiService.getRecordDetail(Number(recordId), { 
       username: "", 
-      password: "", 
       role: "", 
+      password: "", 
       reauth_password: "" 
     } as ReAuthRequest).then(res => res.data),
     retry: false
   });
 
+  const { data: labHistory } = useQuery({
+    queryKey: ["lab-results", recordId],
+    queryFn: () => apiService.getLabResults(Number(recordId)).then(res => res.data),
+    enabled: !!recordId
+  });
+
   const handleSubmit = async (reauth: ReAuthRequest) => {
     setIsLoading(true);
     try {
-      // Simulate encrypted commit
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const payload = {
+        test_name: testName || "Unknown Test",
+        result_value: resultData.value,
+        unit: resultData.unit,
+        reference_range: resultData.reference_range,
+        status: resultData.status,
+        comments: resultData.comments
+      };
+
+      await apiService.addLabResult(Number(recordId), payload);
       
       addToast(`Laboratory results for ${testName} finalized and encrypted`, "success");
       navigate("/lab");

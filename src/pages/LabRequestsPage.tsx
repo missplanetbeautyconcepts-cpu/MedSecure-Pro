@@ -22,39 +22,22 @@ export default function LabRequestsPage() {
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
-  const { data: records = [], isLoading } = useQuery({
+  const { data: pendingTests = [], isLoading: isLoadingPending } = useQuery({
+    queryKey: ["pending-lab-tests"],
+    queryFn: () => apiService.getPendingLabTests().then(res => res.data),
+    enabled: activeTab === "pending"
+  });
+
+  const { data: records = [], isLoading: isLoadingRecords } = useQuery({
     queryKey: ["records"],
     queryFn: () => apiService.getRecords().then(res => res.data),
+    enabled: activeTab === "completed"
   });
 
-  // Extract individual tests from records
-  // We need to parse the 'note' or if it was doctor-entered, we might need decrypted info.
-  // In this proto, we assume metadata 'note' contains patient name, and we filter based on that.
-  
-  const allTests: any[] = [];
-  
-  records.forEach(record => {
-    try {
-      // In a real app, we'd need to decrypt to see lab_tests. 
-      // For the "Pending" list metadata view, doctors might store a JSON-lite summary in notes
-      // but for this demo, let's assume we can see decrypted summaries for 'lab' role
-      // Or we mock the "requested tests" for the UI if they're not in metadata.
-      
-      // Let's mock some data if none found to show functionality
-      const mockTests = [
-        { id: `${record.id}-CBC`, recordId: record.id, name: "CBC", patient: record.note, doctor: "DR_SMITH", date: record.created_at, priority: "Routine", status: "pending" },
-        { id: `${record.id}-LIPID`, recordId: record.id, name: "Lipid Panel", patient: record.note, doctor: "DR_SMITH", date: record.created_at, priority: "Urgent", status: "pending" }
-      ];
-      
-      allTests.push(...mockTests);
-    } catch (e) {
-      // Skip
-    }
-  });
+  const isLoading = isLoadingPending || isLoadingRecords;
 
-  const filteredTests = allTests.filter(t => 
-    t.status === activeTab &&
-    (t.patient.toLowerCase().includes(search.toLowerCase()) || t.name.toLowerCase().includes(search.toLowerCase()))
+  const filteredTests = (activeTab === "pending" ? pendingTests : []).filter((t: any) => 
+    (t.patient_name?.toLowerCase().includes(search.toLowerCase()) || t.test_name?.toLowerCase().includes(search.toLowerCase()))
   );
 
   const columns = [
@@ -62,7 +45,7 @@ export default function LabRequestsPage() {
       header: "Test Identification",
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 text-xs">{item.name}</span>
+          <span className="font-bold text-slate-900 text-xs">{item.test_name || item.name}</span>
           <span className="text-[10px] text-slate-400 font-mono">#ID-{item.id}</span>
         </div>
       ),
@@ -70,7 +53,7 @@ export default function LabRequestsPage() {
     {
       header: "Patient",
       accessor: (item: any) => (
-        <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{item.patient}</span>
+        <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{item.patient_name || item.patient}</span>
       ),
     },
     {
@@ -78,18 +61,18 @@ export default function LabRequestsPage() {
       accessor: (item: any) => (
         <span className={cn(
           "px-2 py-0.5 rounded text-[9px] font-bold uppercase border",
-          item.priority === "Urgent" 
+          (item.priority === "Urgent" || item.is_priority)
             ? "bg-rose-50 text-rose-600 border-rose-100" 
             : "bg-slate-50 text-slate-500 border-slate-100"
         )}>
-          {item.priority}
+          {item.priority || (item.is_priority ? "Urgent" : "Routine")}
         </span>
       ),
     },
     {
       header: "Requested Date",
       accessor: (item: any) => (
-        <span className="text-[10px] font-mono text-slate-500">{formatDate(item.date)}</span>
+        <span className="text-[10px] font-mono text-slate-500">{formatDate(item.created_at || item.date)}</span>
       ),
     },
     {
@@ -99,10 +82,10 @@ export default function LabRequestsPage() {
           variant="outline" 
           size="sm" 
           className="h-8 gap-2 bg-white"
-          onClick={() => navigate(`/lab/results/${item.recordId}/${item.name}`)}
+          onClick={() => navigate(`/lab/results/${item.record_id || item.recordId}/${item.test_name || item.name}`)}
         >
           <span className="text-[10px] font-bold uppercase">
-            {item.status === "pending" ? "Enter Result" : "View"}
+            {activeTab === "pending" ? "Enter Result" : "View"}
           </span>
           <ChevronRight className="h-3 w-3" />
         </Button>

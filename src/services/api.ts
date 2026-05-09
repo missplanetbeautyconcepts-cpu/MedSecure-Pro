@@ -113,31 +113,58 @@ export const apiService = {
 
   // Records
   getRecords: () => api.get<RecordMetadata[]>("/records"),
+  getPatients: () => api.get("/patients"),
   
   createRecord: (data: RecordCreateRequest) => 
     api.post<RecordMetadata>("/records/create", data),
 
   getRecordFull: (id: number, reauth: ReAuthRequest) => 
-    api.post<RecordFull>(`/records/${id}`, reauth),
+    api.post<RecordFull>(`/records/${id}`, { reauth_password: reauth.reauth_password }),
 
   getRecordDetail: (id: number, reauth: ReAuthRequest) => 
-    api.post<RecordFull>(`/records/${id}`, reauth),
+    api.post<RecordFull>(`/records/${id}`, { reauth_password: reauth.reauth_password }),
 
   updateRecord: (id: number, data: RecordUpdateRequest, reauth: ReAuthRequest) => 
-    api.put(`/records/${id}`, { ...data, ...reauth }),
+    api.put(`/records/${id}`, { 
+      note: data.note, 
+      reauth_password: reauth.reauth_password 
+    }),
 
   deleteRecord: (id: number, reauth: ReAuthRequest) => 
-    api.delete(`/records/${id}`, { data: reauth }),
+    api.delete(`/records/${id}`, { 
+      data: { reauth_password: reauth.reauth_password } 
+    }),
+
+  // Specialized Record Access
+  addVitals: (id: number, data: any) => 
+    api.post(`/records/${id}/vitals`, data),
+  
+  getVitalsHistory: (id: number) => 
+    api.get(`/records/${id}/vitals/history`),
+
+  addLabResult: (id: number, data: any) => 
+    api.post(`/records/${id}/lab-results`, data),
+
+  getLabResults: (id: number) => 
+    api.get(`/records/${id}/lab-results`),
+
+  getPendingLabTests: () => 
+    api.get("/lab/pending-tests"),
 
   // Keys
   getServerPubKey: () => api.get("/keys/server_pub"),
-  rotateKeys: (reauth: ReAuthRequest) => api.post("/keys/rotate", reauth),
+  rotateKeys: (reauth: ReAuthRequest) => 
+    api.post("/keys/rotate", { password: reauth.reauth_password }),
 
   // Audit & Security
   getAuditLogs: () => api.get<AuditLog[]>("/audit_logs"),
   getThreatStatus: () => api.get<ThreatStatus>("/security/threat-status"),
   simulateAttack: (data: AttackSimulationRequest, reauth: ReAuthRequest) => 
-    api.post("/security/simulate-attack", { ...data, ...reauth }),
+    api.post("/security/simulate-attack", { 
+      attack_type: data.attack_type,
+      target_record_id: data.target_record_id,
+      reauth_password: reauth.reauth_password 
+    }),
 };
 
 export default api;
