@@ -136,6 +136,18 @@ export default function CreateReportPage() {
                     value={formData.age}
                     onChange={(e) => setFormData({...formData, age: parseInt(e.target.value)})}
                   />
+                  <Input 
+                    label="Blood Type" 
+                    placeholder="e.g. O+"
+                    value={formData.bio_data?.blood_type}
+                    onChange={(e) => setFormData({...formData, bio_data: { ...formData.bio_data, blood_type: e.target.value }})}
+                  />
+                  <Input 
+                    label="Allergies" 
+                    placeholder="e.g. Penicillin, Pollen"
+                    value={formData.bio_data?.allergies}
+                    onChange={(e) => setFormData({...formData, bio_data: { ...formData.bio_data, allergies: e.target.value }})}
+                  />
                 </div>
                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 italic text-xs text-slate-500">
                   Identity data will be masked in audit logs using cryptographic hashing. Only authorized clinicians can decrypt full principal names.

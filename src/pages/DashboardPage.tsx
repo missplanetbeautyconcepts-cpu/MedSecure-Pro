@@ -82,6 +82,12 @@ export default function DashboardPage() {
     enabled: user?.role === "admin",
   });
 
+  const { data: pendingTests = [] } = useQuery({
+    queryKey: ["pending-lab-tests"],
+    queryFn: () => apiService.getPendingLabTests().then(res => res.data),
+    enabled: user?.role === "lab",
+  });
+
   const getStats = () => {
     const baseStats = [
       { title: "Encrypted Records", value: isLoadingRecords ? "..." : records.length.toLocaleString(), icon: FileText, color: "text-sky-600", trend: "🔒 ECC-AES Hybrid" },
@@ -98,13 +104,13 @@ export default function DashboardPage() {
       case "doctor":
         return [
           { title: "Personal Caseload", value: records.length, icon: Users, color: "text-sky-600", trend: "Total unique patients", trendType: "up" },
-          { title: "Pending Labs", value: "...", icon: Microscope, color: "text-amber-600", trend: "Check lab module", trendType: "down" },
+          { title: "Pending Labs", value: "Access Restricted", icon: Microscope, color: "text-amber-600", trend: "Analysis queue", trendType: "down" },
           { title: "Today's Consults", value: "-", icon: Activity, color: "text-emerald-600", trend: "Queue inactive", trendType: "up" },
           ...baseStats
         ];
       case "lab":
         return [
-          { title: "Analysis Queue", value: "Active", icon: FlaskConical, color: "text-amber-600", trend: "Real-time bridge", trendType: "down" },
+          { title: "Analysis Queue", value: pendingTests.length, icon: FlaskConical, color: "text-amber-600", trend: "Pending processing", trendType: "down" },
           { title: "Completed Feed", value: records.length, icon: CheckCircle2, color: "text-emerald-600", trend: "Historical data", trendType: "up" },
           { title: "Avg Turnaround", value: "N/A", icon: Clock, color: "text-sky-600", trend: "Monitoring disabled", trendType: "up" },
           ...baseStats

@@ -69,6 +69,12 @@ api.interceptors.response.use(
     console.error(`API Error ${status}:`, data);
 
     if (status === 401) {
+      // If it's just a failed re-authentication (secondary password check), don't log out.
+      // The individual component should handle this error.
+      if (data?.detail === "Re-authentication failed" || data?.detail === "Invalid medical credentials") {
+        return Promise.reject(error);
+      }
+
       useAuthStore.getState().logout();
       if (!window.location.pathname.startsWith("/login")) {
         window.location.href = "/login";

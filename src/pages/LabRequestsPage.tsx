@@ -11,6 +11,7 @@ import {
   Filter
 } from "lucide-react";
 import { apiService } from "../services/api";
+import { useAuthStore } from "../store/authStore";
 import { DataTable } from "../components/ui/DataTable";
 import { Button } from "../components/ui/Button";
 import { RecordMetadata, PatientData } from "../types";
@@ -18,14 +19,17 @@ import { formatDate, cn } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 
 export default function LabRequestsPage() {
-  const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
+  const { user } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<"pending" | "completed">(
+    user?.role === "lab" ? "pending" : "completed"
+  );
   const [search, setSearch] = useState("");
   const navigate = useNavigate();
 
   const { data: pendingTests = [], isLoading: isLoadingPending } = useQuery({
     queryKey: ["pending-lab-tests"],
     queryFn: () => apiService.getPendingLabTests().then(res => res.data),
-    enabled: activeTab === "pending"
+    enabled: activeTab === "pending" && user?.role === "lab"
   });
 
   const { data: records = [], isLoading: isLoadingRecords } = useQuery({
@@ -38,7 +42,9 @@ export default function LabRequestsPage() {
 
   const filteredTests = (activeTab === "pending" ? pendingTests : records).filter((t: any) => 
     (t.patient_name?.toLowerCase().includes(search.toLowerCase()) || 
+     t.patient?.toLowerCase().includes(search.toLowerCase()) ||
      t.test_name?.toLowerCase().includes(search.toLowerCase()) ||
+     t.name?.toLowerCase().includes(search.toLowerCase()) ||
      t.note?.toLowerCase().includes(search.toLowerCase()) ||
      t.id?.toString().includes(search))
   );
@@ -48,7 +54,7 @@ export default function LabRequestsPage() {
       header: "Test Identification",
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 text-xs">{item.test_name || item.name}</span>
+          <span className="font-bold text-slate-900 text-xs">{item.test_name || item.name || item.note || "General Clinical Test"}</span>
           <span className="text-[10px] text-slate-400 font-mono">#ID-{item.id}</span>
         </div>
       ),
@@ -56,7 +62,7 @@ export default function LabRequestsPage() {
     {
       header: "Patient",
       accessor: (item: any) => (
-        <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{item.patient_name || item.patient}</span>
+        <span className="text-xs font-medium text-slate-700 truncate max-w-[150px]">{item.patient_name || item.patient || "Encrypted Identity"}</span>
       ),
     },
     {
@@ -80,19 +86,30 @@ export default function LabRequestsPage() {
     },
     {
       header: "",
-      accessor: (item: any) => (
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="h-8 gap-2 bg-white"
-          onClick={() => navigate(`/lab/results/${item.record_id || item.recordId}/${item.test_name || item.name}`)}
-        >
-          <span className="text-[10px] font-bold uppercase">
-            {activeTab === "pending" ? "Enter Result" : "View"}
-          </span>
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      ),
+      accessor: (item: any) => {
+        const recordId = item.record_id || item.recordId || item.id;
+        const testName = item.test_name || item.name || "diagnostic";
+        
+        return (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 gap-2 bg-white"
+            onClick={() => {
+              if (activeTab === "pending") {
+                navigate(`/lab/results/${recordId}/${testName}`);
+              } else {
+                navigate(`/records`); // Go to records to view full details
+              }
+            }}
+          >
+            <span className="text-[10px] font-bold uppercase">
+              {activeTab === "pending" ? "Enter Result" : "View Record"}
+            </span>
+            <ChevronRight className="h-3 w-3" />
+          </Button>
+        );
+      },
       className: "text-right",
     },
   ];
@@ -123,16 +140,18 @@ export default function LabRequestsPage() {
       </div>
 
       <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab("pending")}
-          className={cn(
-            "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2",
-            activeTab === "pending" ? "bg-white text-sky-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
-          )}
-        >
-          <Clock className="h-4 w-4" />
-          Pending Requests
-        </button>
+        {user?.role === "lab" && (
+          <button
+            onClick={() => setActiveTab("pending")}
+            className={cn(
+              "px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2",
+              activeTab === "pending" ? "bg-white text-sky-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            )}
+          >
+            <Clock className="h-4 w-4" />
+            Pending Requests
+          </button>
+        )}
         <button
           onClick={() => setActiveTab("completed")}
           className={cn(
@@ -141,7 +160,7 @@ export default function LabRequestsPage() {
           )}
         >
           <CheckCircle2 className="h-4 w-4" />
-          Completed Data
+          {user?.role === "lab" ? "Completed Data" : "Laboratory Records"}
         </button>
       </div>
 

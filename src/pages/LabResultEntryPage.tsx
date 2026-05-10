@@ -58,7 +58,8 @@ export default function LabResultEntryPage() {
         unit: resultData.unit,
         reference_range: resultData.reference_range,
         status: resultData.status,
-        comments: resultData.comments
+        comments: resultData.comments,
+        reauth_password: reauth.reauth_password
       };
 
       await apiService.addLabResult(Number(recordId), payload);
