@@ -108,7 +108,8 @@ export default function VitalsEntryPage() {
         weight: parseFloat(vitalsData.weight.replace(/[^0-9.]/g, '')),
         height: parseFloat(vitalsData.height.replace(/[^0-9.]/g, '')),
         pain: vitalsData.pain_score,
-        notes: vitalsData.nurse_notes
+        notes: vitalsData.nurse_notes,
+        reauth_password: reauth.reauth_password
       };
 
       await apiService.addVitals(Number(id), payload);

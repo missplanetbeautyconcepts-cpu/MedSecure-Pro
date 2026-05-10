@@ -15,9 +15,20 @@ import {
   Stethoscope,
   ShieldAlert,
   Activity,
-  CheckCircle2
+  CheckCircle2,
+  TrendingUp,
+  History as HistoryIcon
 } from "lucide-react";
 import { motion } from "motion/react";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from "recharts";
 import { apiService } from "../services/api";
 import { useUIStore } from "../store/uiStore";
 import { useAuthStore } from "../store/authStore";
@@ -75,6 +86,22 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
   ] as const;
 
   const tabs = allTabs.filter(t => (t.roles as readonly string[]).includes(user?.role || ""));
+  
+  const { data: vitalsHistory, isLoading: isLoadingVitals } = useQuery({
+    queryKey: ["vitals-history", record.id],
+    queryFn: () => apiService.getVitalsHistory(record.id).then(res => res.data),
+    enabled: activeTab === "vitals"
+  });
+
+  const chartData = useMemo(() => {
+    if (!vitalsHistory) return [];
+    return vitalsHistory.map((v: any) => ({
+      time: new Date(v.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      hr: v.hr,
+      temp: v.temp,
+      bp: parseInt(v.bp?.split('/')[0] || "0")
+    })).reverse(); // Reverse for chronolgical display in chart
+  }, [vitalsHistory]);
 
   // Ensure default tab is allowed
   useEffect(() => {
@@ -191,19 +218,23 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
               <div className="grid grid-cols-4 gap-4">
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase">BP</p>
-                  <p className="text-sm font-bold text-slate-900">{data.vitals?.blood_pressure || "N/A"}</p>
+                  <p className="text-sm font-bold text-slate-900">{vitalsHistory?.[0]?.bp || data.vitals?.blood_pressure || "N/A"}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase">Heart Rate</p>
-                  <p className="text-sm font-bold text-slate-900">{data.vitals?.heart_rate ? `${data.vitals.heart_rate} BPM` : "N/A"}</p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {vitalsHistory?.[0]?.hr ? `${vitalsHistory[0].hr} BPM` : data.vitals?.heart_rate ? `${data.vitals.heart_rate} BPM` : "N/A"}
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="text-[9px] font-bold text-slate-400 uppercase">Temp</p>
-                  <p className="text-sm font-bold text-slate-900">{data.vitals?.temperature ? `${data.vitals.temperature}°F` : "N/A"}</p>
+                  <p className="text-sm font-bold text-slate-900">
+                    {vitalsHistory?.[0]?.temp ? `${vitalsHistory[0].temp}°F` : data.vitals?.temperature ? `${data.vitals.temperature}°F` : "N/A"}
+                  </p>
                 </div>
                 <div className="text-center">
-                   <p className="text-[9px] font-bold text-slate-400 uppercase">Respiration</p>
-                   <p className="text-sm font-bold text-slate-900">{data.vitals?.respiratory_rate ? `${data.vitals.respiratory_rate}/m` : "N/A"}</p>
+                   <p className="text-[9px] font-bold text-slate-400 uppercase">SpO2</p>
+                   <p className="text-sm font-bold text-slate-900">{vitalsHistory?.[0]?.spo2 ? `${vitalsHistory[0].spo2}%` : data.vitals?.spo2 ? `${data.vitals.spo2}%` : "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -274,24 +305,77 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
 
         {activeTab === "vitals" && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="relative h-48 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center overflow-hidden">
-               {/* Visual placeholder for a graph */}
-               <div className="absolute inset-x-0 bottom-0 top-1/2 bg-sky-500/5 border-t border-sky-500/20" />
-               <div className="relative z-10 text-center px-6">
-                 <Activity className="h-8 w-8 text-sky-200 mx-auto mb-2" />
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Historical Telemetry</p>
-                 <p className="text-[9px] text-slate-400 mt-1 italic">Vitals history is being migrated to the new telemetry core. Historical data for this record is currently unavailable in this view.</p>
-               </div>
-            </div>
-            <div className="space-y-3">
-               <h3 className="text-[10px] font-bold text-slate-900 uppercase">Encryption Log</h3>
-               <div className="space-y-1">
-                 <div className="flex justify-between text-xs py-2 border-b border-slate-50">
-                   <span className="text-slate-500">Baseline Entry</span>
-                   <span className="font-mono text-slate-700">{record.created_at}</span>
-                 </div>
-               </div>
-            </div>
+            {vitalsHistory && vitalsHistory.length > 0 ? (
+              <>
+                <div className="h-48 w-full bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <TrendingUp className="h-3 w-3 text-sky-500" />
+                       Physiological Trends
+                    </p>
+                    <div className="flex gap-3">
+                       <div className="flex items-center gap-1">
+                         <div className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+                         <span className="text-[9px] font-bold text-slate-400">HR</span>
+                       </div>
+                       <div className="flex items-center gap-1">
+                         <div className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                         <span className="text-[9px] font-bold text-slate-400">BP</span>
+                       </div>
+                    </div>
+                  </div>
+                  <div className="h-32 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="time" hide />
+                        <YAxis hide domain={['auto', 'auto']} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: 'none', fontSize: '10px' }}
+                        />
+                        <Line type="monotone" dataKey="hr" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="bp" stroke="#f43f5e" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                   <h3 className="text-[10px] font-bold text-slate-900 uppercase flex items-center gap-2">
+                     <HistoryIcon className="h-3 w-3 text-slate-400" />
+                     Manual Vitals Log
+                   </h3>
+                   <div className="space-y-2">
+                     {vitalsHistory.map((log: any, i: number) => (
+                       <div key={i} className="p-3 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
+                         <div className="space-y-0.5">
+                           <div className="flex items-center gap-2">
+                             <span className="text-xs font-bold text-slate-900">{log.bp} BP</span>
+                             <span className="text-slate-300">•</span>
+                             <span className="text-xs font-bold text-sky-600">{log.hr} BPM</span>
+                             <span className="text-slate-300">•</span>
+                             <span className="text-xs font-medium text-slate-500">{log.temp}°F</span>
+                           </div>
+                           {log.notes && (
+                             <p className="text-[10px] text-slate-400 italic">"{log.notes}"</p>
+                           )}
+                         </div>
+                         <div className="text-right">
+                           <p className="text-[10px] font-mono text-slate-400">{new Date(log.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
+                           <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest">Verified Entry</p>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-xl">
+                 <Activity className="h-8 w-8 text-slate-200 mx-auto mb-2" />
+                 <p className="text-xs text-slate-400 italic">No manual vitals history recorded for this patient.</p>
+                 <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">Telemetry core inactive</p>
+              </div>
+            )}
           </div>
         )}
       </div>
