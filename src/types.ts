@@ -94,6 +94,7 @@ export interface RecordCreateRequest {
 }
 
 export interface RecordUpdateRequest {
+  plaintext?: string;
   note?: string;
 }
 

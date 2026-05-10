@@ -126,6 +126,7 @@ export const apiService = {
 
   updateRecord: (id: number, data: RecordUpdateRequest, reauth: ReAuthRequest) => 
     api.put(`/records/${id}`, { 
+      plaintext: data.plaintext,
       note: data.note, 
       reauth_password: reauth.reauth_password 
     }),

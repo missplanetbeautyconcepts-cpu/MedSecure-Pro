@@ -43,9 +43,15 @@ import { formatDate, cn } from "../lib/utils";
 function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<"overview" | "diagnosis" | "labs" | "vitals">("overview");
   const [isEditingNote, setIsEditingNote] = useState(false);
+  const [isEditingFindings, setIsEditingFindings] = useState(false);
   const [note, setNote] = useState(record.note || "");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [doctorNotes, setDoctorNotes] = useState("");
+  const [bloodType, setBloodType] = useState("");
+  const [allergies, setAllergies] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isReAuthOpen, setIsReAuthOpen] = useState(false);
+  const [pendingUpdate, setPendingUpdate] = useState<"metadata" | "findings">("metadata");
   
   const queryClient = useQueryClient();
   const addToast = useUIStore((state) => state.addToast);
@@ -62,20 +68,58 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
     }
   }, [record.plaintext]);
 
-  const handleUpdateNote = async (reauth: ReAuthRequest) => {
+  // Sync findings state when modal opens or record changes
+  useEffect(() => {
+    setDiagnosis(data.diagnosis || "");
+    setDoctorNotes(data.doctor_notes || "");
+    setBloodType(data.bio_data?.blood_type || "");
+    setAllergies(data.bio_data?.allergies || "");
+  }, [data]);
+
+  const handleUpdate = async (reauth: ReAuthRequest) => {
     setIsUpdating(true);
     try {
-      await apiService.updateRecord(record.id, { note }, reauth);
-      addToast("Record metadata updated successfully", "success");
+      if (pendingUpdate === "metadata") {
+        await apiService.updateRecord(record.id, { note }, reauth);
+        addToast("Record metadata updated successfully", "success");
+        setIsEditingNote(false);
+      } else {
+        const updatedPatientData = {
+          ...data,
+          diagnosis,
+          doctor_notes: doctorNotes,
+          bio_data: {
+            ...data.bio_data,
+            blood_type: bloodType,
+            allergies: allergies
+          }
+        };
+        await apiService.updateRecord(record.id, { 
+          plaintext: JSON.stringify(updatedPatientData),
+          note
+        }, reauth);
+        addToast("Clinical record updated and re-encrypted", "success");
+        setIsEditingFindings(false);
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["records"] });
-      setIsEditingNote(false);
-      setIsReAuthOpen?.(false);
+      setIsReAuthOpen(false);
     } catch (error) {
-      addToast("Failed to update record metadata. Verify your credentials.", "error");
+      addToast(`Update failed: ${apiService.getErrorMessage(error)}`, "error");
       throw error;
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const startMetadataUpdate = () => {
+    setPendingUpdate("metadata");
+    setIsReAuthOpen(true);
+  };
+
+  const startFindingsUpdate = () => {
+    setPendingUpdate("findings");
+    setIsReAuthOpen(true);
   };
 
   const allTabs = [
@@ -142,7 +186,7 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
                 onChange={(e) => setNote(e.target.value)} 
                 className="h-8 w-48 text-xs"
               />
-              <Button size="sm" className="h-8" onClick={() => setIsReAuthOpen(true)}>Save</Button>
+              <Button size="sm" className="h-8" onClick={startMetadataUpdate} isLoading={isUpdating}>Save</Button>
               <Button size="sm" variant="ghost" className="h-8" onClick={() => setIsEditingNote(false)}>Cancel</Button>
             </div>
           ) : (
@@ -162,9 +206,12 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
       <ReAuthModal 
         isOpen={isReAuthOpen} 
         onClose={() => setIsReAuthOpen(false)} 
-        onConfirm={handleUpdateNote}
+        onConfirm={handleUpdate}
         title="Authorize Record Update"
-        description="Verify your identity to modify the encrypted record's plaintext metadata."
+        description={pendingUpdate === "metadata" 
+          ? "Verify your identity to modify the encrypted record's plaintext metadata." 
+          : "ECC-AES Re-encryption required: You are about to modify protected clinical data. Standard verification protocol active."
+        }
       />
 
       {/* Tabs */}
@@ -243,16 +290,89 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
 
         {activeTab === "diagnosis" && (
           <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-            <div className="p-5 bg-rose-50 border border-rose-100 rounded-xl">
-              <label className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-2 block">Primary Impression</label>
-              <p className="text-lg font-bold text-rose-900 leading-tight">{data.diagnosis}</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinical Commentary</label>
-              <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-700 leading-relaxed italic">
-                "{data.doctor_notes || "No additional commentary was provided for this assessment."}"
+            {isEditingFindings ? (
+              <div className="space-y-4">
+                <div className="p-5 bg-rose-50 border border-rose-100 rounded-xl space-y-3">
+                  <label className="text-[10px] font-bold text-rose-600 uppercase tracking-widest block">Update Primary Impression</label>
+                  <Input 
+                    value={diagnosis} 
+                    onChange={(e) => setDiagnosis(e.target.value)}
+                    className="bg-white border-rose-200 focus:ring-rose-500 font-bold"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Blood Type</label>
+                    <Input 
+                      value={bloodType} 
+                      onChange={(e) => setBloodType(e.target.value)}
+                      placeholder="e.g. O+"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Allergies</label>
+                    <Input 
+                      value={allergies} 
+                      onChange={(e) => setAllergies(e.target.value)}
+                      placeholder="e.g. Penicillin"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinical Commentary</label>
+                  <textarea 
+                    className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-sky-500 outline-none transition-all"
+                    value={doctorNotes}
+                    onChange={(e) => setDoctorNotes(e.target.value)}
+                    placeholder="Enter clinical findings, assessments, and plan..."
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button className="flex-1 gap-2" onClick={startFindingsUpdate} isLoading={isUpdating}>
+                    <Lock className="h-4 w-4" />
+                    Commit Findings
+                  </Button>
+                  <Button variant="outline" onClick={() => setIsEditingFindings(false)}>Cancel</Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="relative group">
+                  <div className="p-5 bg-rose-50 border border-rose-100 rounded-xl">
+                    <label className="text-[10px] font-bold text-rose-600 uppercase tracking-widest mb-2 block">Primary Impression</label>
+                    <p className="text-lg font-bold text-rose-900 leading-tight">{data.diagnosis}</p>
+                  </div>
+                  {user?.role === "doctor" && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="absolute top-2 right-2 text-rose-400 hover:text-rose-600"
+                      onClick={() => setIsEditingFindings(true)}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Clinical Commentary</label>
+                  <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-700 leading-relaxed italic relative group">
+                    "{data.doctor_notes || "No additional commentary was provided for this assessment."}"
+                    {user?.role === "doctor" && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="absolute top-2 right-2 text-slate-400 hover:text-slate-600"
+                        onClick={() => setIsEditingFindings(true)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
