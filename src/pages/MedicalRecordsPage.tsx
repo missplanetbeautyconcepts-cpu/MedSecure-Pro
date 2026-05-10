@@ -29,7 +29,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from "recharts";
-import { apiService } from "../services/api";
+import { apiService, getErrorMessage } from "../services/api";
 import { useUIStore } from "../store/uiStore";
 import { useAuthStore } from "../store/authStore";
 import { Button } from "../components/ui/Button";
@@ -105,7 +105,7 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
       queryClient.invalidateQueries({ queryKey: ["records"] });
       setIsReAuthOpen(false);
     } catch (error) {
-      addToast(`Update failed: ${apiService.getErrorMessage(error)}`, "error");
+      addToast(`Update failed: ${getErrorMessage(error)}`, "error");
       throw error;
     } finally {
       setIsUpdating(false);
@@ -134,6 +134,12 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
   const { data: vitalsHistory, isLoading: isLoadingVitals } = useQuery({
     queryKey: ["vitals-history", record.id],
     queryFn: () => apiService.getVitalsHistory(record.id).then(res => res.data),
+    enabled: !!record.id
+  });
+
+  const { data: labResults, isLoading: isLoadingLabs } = useQuery({
+    queryKey: ["lab-results", record.id],
+    queryFn: () => apiService.getLabResults(record.id).then(res => res.data),
     enabled: !!record.id
   });
 
@@ -381,38 +387,44 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-widest">Requested Diagnostic Tests</h3>
             {data.lab_tests?.requested && data.lab_tests.requested.length > 0 ? (
               <div className="grid grid-cols-1 gap-2">
-                {data.lab_tests.requested.map((test, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 bg-sky-50 text-sky-600 rounded flex items-center justify-center">
-                        <Microscope className="h-4 w-4" />
+                {data.lab_tests.requested.map((test, i) => {
+                  const result = labResults?.find((r: any) => r.test_name === test);
+                  const resultFromData = data.lab_tests?.results?.[test];
+                  const finalResult = result || resultFromData;
+
+                  return (
+                    <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-sky-50 text-sky-600 rounded flex items-center justify-center">
+                          <Microscope className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-700">{test}</span>
+                          {finalResult && (
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              Result: {finalResult.value || finalResult.result_value} {finalResult.unit}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-700">{test}</span>
-                        {data.lab_tests?.results?.[test] && (
-                          <span className="text-[10px] text-slate-500 font-medium">
-                            Result: {data.lab_tests.results[test].value} {data.lab_tests.results[test].unit}
-                          </span>
-                        )}
-                      </div>
+                      {finalResult ? (
+                        <div className="flex items-center gap-2">
+                           <span className={cn(
+                             "text-[9px] font-bold uppercase px-2 py-1 rounded",
+                             finalResult.status === "critical" ? "bg-rose-100 text-rose-700" :
+                             finalResult.status === "abnormal" ? "bg-amber-100 text-amber-700" :
+                             "bg-emerald-100 text-emerald-700"
+                           )}>
+                             {finalResult.status}
+                           </span>
+                           <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                        </div>
+                      ) : (
+                        <span className="text-[9px] font-bold uppercase px-2 py-1 bg-amber-50 text-amber-600 rounded">Analysis Pending</span>
+                      )}
                     </div>
-                    {data.lab_tests?.results?.[test] ? (
-                      <div className="flex items-center gap-2">
-                         <span className={cn(
-                           "text-[9px] font-bold uppercase px-2 py-1 rounded",
-                           data.lab_tests.results[test].status === "critical" ? "bg-rose-100 text-rose-700" :
-                           data.lab_tests.results[test].status === "abnormal" ? "bg-amber-100 text-amber-700" :
-                           "bg-emerald-100 text-emerald-700"
-                         )}>
-                           {data.lab_tests.results[test].status}
-                         </span>
-                         <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      </div>
-                    ) : (
-                      <span className="text-[9px] font-bold uppercase px-2 py-1 bg-amber-50 text-amber-600 rounded">Analysis Pending</span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-xl">

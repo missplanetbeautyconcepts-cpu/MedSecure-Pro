@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Microscope, 
   FlaskConical, 
@@ -26,9 +26,13 @@ import { ReAuthRequest } from "../types";
 export default function LabResultEntryPage() {
   const { recordId, testName } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const addToast = useUIStore((state) => state.addToast);
   const [isReAuthOpen, setIsReAuthOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const numericRecordId = Number(recordId);
+  const isInvalidParams = !recordId || recordId === "NaN" || isNaN(numericRecordId) || !testName || testName === "undefined";
 
   // Form State
   const [resultData, setResultData] = useState({
@@ -45,15 +49,20 @@ export default function LabResultEntryPage() {
 
   const { data: labHistory } = useQuery({
     queryKey: ["lab-results", recordId],
-    queryFn: () => apiService.getLabResults(Number(recordId)).then(res => res.data),
-    enabled: !!recordId
+    queryFn: () => apiService.getLabResults(numericRecordId).then(res => res.data),
+    enabled: !isInvalidParams
   });
 
   const handleSubmit = async (reauth: ReAuthRequest) => {
+    if (isInvalidParams) {
+      addToast("Invalid record or test parameters.", "error");
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const payload = {
-        test_name: testName || "Unknown Test",
+        test_name: testName,
         result_value: resultData.value,
         unit: resultData.unit,
         reference_range: resultData.reference_range,
@@ -62,8 +71,12 @@ export default function LabResultEntryPage() {
         reauth_password: reauth.reauth_password
       };
 
-      await apiService.addLabResult(Number(recordId), payload);
+      await apiService.addLabResult(numericRecordId, payload);
       
+      queryClient.invalidateQueries({ queryKey: ["pending-lab-tests"] });
+      queryClient.invalidateQueries({ queryKey: ["lab-results", recordId] });
+      queryClient.invalidateQueries({ queryKey: ["records"] });
+
       addToast(`Laboratory results for ${testName} finalized and encrypted`, "success");
       navigate("/lab");
     } catch (error) {
@@ -73,6 +86,17 @@ export default function LabResultEntryPage() {
       setIsReAuthOpen(false);
     }
   };
+
+  if (isInvalidParams) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <AlertCircle className="h-12 w-12 text-rose-500" />
+        <h2 className="text-xl font-bold text-slate-900">Missing Diagnostic Context</h2>
+        <p className="text-slate-500">The record ID or test name is invalid. Please return to the queue.</p>
+        <Button onClick={() => navigate("/lab")}>Return to Queue</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">

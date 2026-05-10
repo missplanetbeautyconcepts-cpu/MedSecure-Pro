@@ -54,7 +54,7 @@ export default function LabRequestsPage() {
       header: "Test Identification",
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 text-xs">{item.test_name || item.name || item.note || "General Clinical Test"}</span>
+          <span className="font-bold text-slate-900 text-xs">{item.test_name || item.test || item.name || item.note || "General Clinical Test"}</span>
           <span className="text-[10px] text-slate-400 font-mono">#ID-{item.id}</span>
         </div>
       ),
@@ -87,8 +87,13 @@ export default function LabRequestsPage() {
     {
       header: "",
       accessor: (item: any) => {
-        const recordId = item.record_id || item.recordId || item.id;
-        const testName = item.test_name || item.name || "diagnostic";
+        // Log item to help debugging if needed (will show in dev console)
+        if (!item.record_id && !item.recordId && isNaN(Number(item.id))) {
+          console.warn("Lab item missing record ID:", item);
+        }
+
+        const recordId = item.record_id || item.recordId || item.patient_record_id || item.id;
+        const testName = item.test_name || item.test || item.name || item.note || "diagnostic";
         
         return (
           <Button 
@@ -97,6 +102,10 @@ export default function LabRequestsPage() {
             className="h-8 gap-2 bg-white"
             onClick={() => {
               if (activeTab === "pending") {
+                if (!recordId || recordId === "NaN") {
+                  console.error("Invalid recordId for navigation");
+                  return;
+                }
                 navigate(`/lab/results/${recordId}/${testName}`);
               } else {
                 navigate(`/records`); // Go to records to view full details
