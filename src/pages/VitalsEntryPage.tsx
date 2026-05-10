@@ -43,6 +43,9 @@ export default function VitalsEntryPage() {
   const queryClient = useQueryClient();
   const addToast = useUIStore((state) => state.addToast);
   const [isReAuthOpen, setIsReAuthOpen] = useState(false);
+  const [isDecryptModalOpen, setIsDecryptModalOpen] = useState(false);
+  const [isDecrypted, setIsDecrypted] = useState(false);
+  const [decryptedData, setDecryptedData] = useState<RecordFull | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   // Form State
@@ -58,17 +61,24 @@ export default function VitalsEntryPage() {
     nurse_notes: ""
   });
 
-  const { data: record, isLoading: isLoadingRecord } = useQuery({
-    queryKey: ["record", id],
-    queryFn: () => apiService.getRecordDetail(Number(id), { 
-      username: "", 
-      role: "", 
-      password: "", 
-      reauth_password: "" 
-    } as ReAuthRequest).then(res => res.data), // Metadata fetch
-    enabled: !!id,
-    retry: false
-  });
+  // Metadata fetch removed to prevent periodic 401 errors on mount
+  // We will get patient details after explicit decryption
+  const isLoadingRecord = false; 
+
+  const handleDecrypt = async (reauth: ReAuthRequest) => {
+    setIsLoading(true);
+    try {
+      const res = await apiService.getRecordFull(Number(id), reauth);
+      setDecryptedData(res.data);
+      setIsDecrypted(true);
+      addToast("Patient record decrypted successfully", "success");
+    } catch (error) {
+      addToast("Decryption failed. Invalid medical credentials.", "error");
+    } finally {
+      setIsLoading(false);
+      setIsDecryptModalOpen(false);
+    }
+  };
 
   const { data: realHistory } = useQuery({
     queryKey: ["vitals-history", id],
@@ -114,7 +124,7 @@ export default function VitalsEntryPage() {
     }
   };
 
-  if (isLoadingRecord) return <div className="p-8 text-center text-slate-400">Syncing with medical bridge...</div>;
+  if (isLoadingRecord) return <div className="p-8 text-center text-slate-400">Loading patient record...</div>;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -124,9 +134,9 @@ export default function VitalsEntryPage() {
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Vitals Acquisition Panel</h1>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Manual Vitals Recording</h1>
             <div className="flex items-center gap-3 mt-1">
-              <span className="text-[10px] font-bold uppercase text-slate-400">Accessing Record</span>
+              <span className="text-[10px] font-bold uppercase text-slate-400">Recording for</span>
               <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100">#REC{id}</span>
             </div>
           </div>
@@ -140,81 +150,110 @@ export default function VitalsEntryPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form Column */}
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6 min-h-[500px] flex flex-col">
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-5 w-5 text-sky-600" />
-              <h3 className="font-bold text-slate-900 uppercase text-xs tracking-widest">Manual Entry</h3>
+              <h3 className="font-bold text-slate-900 uppercase text-xs tracking-widest">Manual Vitals Entry</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Input 
-                label="BP (systolic/diastolic)" 
-                value={vitalsData.blood_pressure}
-                onChange={(e) => setVitalsData({...vitalsData, blood_pressure: e.target.value})}
-              />
-              <Input 
-                label="Heart Rate (BPM)" 
-                type="number"
-                value={vitalsData.heart_rate}
-                onChange={(e) => setVitalsData({...vitalsData, heart_rate: parseInt(e.target.value)})}
-              />
-              <Input 
-                label="Temp (°F)" 
-                type="number"
-                value={vitalsData.temperature}
-                onChange={(e) => setVitalsData({...vitalsData, temperature: parseFloat(e.target.value)})}
-              />
-              <Input 
-                label="SpO2 (%)" 
-                type="number"
-                value={vitalsData.spo2}
-                onChange={(e) => setVitalsData({...vitalsData, spo2: parseInt(e.target.value)})}
-              />
-              <Input 
-                label="Weight" 
-                value={vitalsData.weight}
-                onChange={(e) => setVitalsData({...vitalsData, weight: e.target.value})}
-              />
-              <Input 
-                label="Height" 
-                value={vitalsData.height}
-                onChange={(e) => setVitalsData({...vitalsData, height: e.target.value})}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pain Level (0-10)</label>
-                <span className="text-sm font-bold text-sky-600">{vitalsData.pain_score}</span>
+            {!isDecrypted ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 py-12 px-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <div className="h-16 w-16 bg-white rounded-full shadow-sm flex items-center justify-center border border-slate-100">
+                  <Unlock className="h-8 w-8 text-slate-300" />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="font-bold text-slate-900 text-sm italic">Record Locked (ECC Encrypted)</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed max-w-[200px] mx-auto">Manual clinical recording is disabled until the patient record is decrypted using medical personnel bridge credentials.</p>
+                </div>
+                <Button 
+                  className="w-full gap-2 py-6 bg-sky-600 hover:bg-sky-700 shadow-lg shadow-sky-600/20"
+                  onClick={() => setIsDecryptModalOpen(true)}
+                  isLoading={isLoading}
+                >
+                  <Unlock className="h-4 w-4" />
+                  Decrypt Patient Record
+                </Button>
               </div>
-              <input 
-                type="range" 
-                min="0" 
-                max="10" 
-                step="1"
-                className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-sky-600"
-                value={vitalsData.pain_score}
-                onChange={(e) => setVitalsData({...vitalsData, pain_score: parseInt(e.target.value)})}
-              />
-            </div>
+            ) : (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Verified Identity: {decryptedData?.note || "Patient #" + id}</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <Input 
+                    label="BP (sys/dia)" 
+                    placeholder="120/80"
+                    value={vitalsData.blood_pressure}
+                    onChange={(e) => setVitalsData({...vitalsData, blood_pressure: e.target.value})}
+                  />
+                  <Input 
+                    label="HR (BPM)" 
+                    type="number"
+                    value={vitalsData.heart_rate}
+                    onChange={(e) => setVitalsData({...vitalsData, heart_rate: parseInt(e.target.value)})}
+                  />
+                  <Input 
+                    label="Temp (°F)" 
+                    type="number"
+                    step="0.1"
+                    value={vitalsData.temperature}
+                    onChange={(e) => setVitalsData({...vitalsData, temperature: parseFloat(e.target.value)})}
+                  />
+                  <Input 
+                    label="SpO2 (%)" 
+                    type="number"
+                    value={vitalsData.spo2}
+                    onChange={(e) => setVitalsData({...vitalsData, spo2: parseInt(e.target.value)})}
+                  />
+                  <Input 
+                    label="Weight" 
+                    value={vitalsData.weight}
+                    onChange={(e) => setVitalsData({...vitalsData, weight: e.target.value})}
+                  />
+                  <Input 
+                    label="Height" 
+                    value={vitalsData.height}
+                    onChange={(e) => setVitalsData({...vitalsData, height: e.target.value})}
+                  />
+                </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nurse Observations</label>
-              <textarea 
-                className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 placeholder:italic"
-                placeholder="Document any physical observations or patient statements..."
-                value={vitalsData.nurse_notes}
-                onChange={(e) => setVitalsData({...vitalsData, nurse_notes: e.target.value})}
-              />
-            </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pain Level (0-10)</label>
+                    <span className="text-sm font-bold text-sky-600">{vitalsData.pain_score}</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="10" 
+                    step="1"
+                    className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-sky-600"
+                    value={vitalsData.pain_score}
+                    onChange={(e) => setVitalsData({...vitalsData, pain_score: parseInt(e.target.value)})}
+                  />
+                </div>
 
-            <Button 
-              className="w-full py-6 mt-4 gap-2" 
-              onClick={() => setIsReAuthOpen(true)}
-            >
-              <Save className="h-4 w-4" />
-              Commit Vitals
-            </Button>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Observations</label>
+                  <textarea 
+                    className="w-full h-24 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-sky-500 placeholder:italic"
+                    placeholder="Document clinical observations..."
+                    value={vitalsData.nurse_notes}
+                    onChange={(e) => setVitalsData({...vitalsData, nurse_notes: e.target.value})}
+                  />
+                </div>
+
+                <Button 
+                  className="w-full py-6 mt-4 gap-2 h-14 text-sm font-bold bg-slate-900 hover:bg-slate-800" 
+                  onClick={() => setIsReAuthOpen(true)}
+                >
+                  <Save className="h-4 w-4" />
+                  Finalize Recording
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -226,8 +265,8 @@ export default function VitalsEntryPage() {
               <div className="flex items-center gap-3">
                 <TrendingUp className="h-5 w-5 text-sky-500" />
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Vitals Telemetry Trend</h3>
-                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Last 24 Hours</p>
+                  <h3 className="font-bold text-slate-900 text-sm">Vitals History Trend</h3>
+                  <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Recorded History</p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -306,7 +345,7 @@ export default function VitalsEntryPage() {
                     </div>
                     <div className="flex-1 pb-4">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-[10px] font-bold text-slate-900 uppercase">TELEMETRY ENTRY</p>
+                        <p className="text-[10px] font-bold text-slate-900 uppercase">MANUAL ENTRY</p>
                         <span className="text-[10px] font-mono text-slate-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
                       </div>
                       <p className="text-xs text-slate-500">Record: {log.bp} BP • {log.hr} BPM • {log.temp}°F</p>
@@ -329,6 +368,14 @@ export default function VitalsEntryPage() {
         onConfirm={handleSave}
         title="Clinical Authorization"
         description="Encrypted physiological data commit requires medical personnel re-authentication."
+      />
+
+      <ReAuthModal 
+        isOpen={isDecryptModalOpen}
+        onClose={() => setIsDecryptModalOpen(false)}
+        onConfirm={handleDecrypt}
+        title="Record Access Decryption"
+        description="Accessing clinical records for manual vital signs entry requires ECC-AES private key bridge activation via medical credentials."
       />
     </div>
   );

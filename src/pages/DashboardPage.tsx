@@ -112,7 +112,7 @@ export default function DashboardPage() {
       case "nurse":
         return [
           { title: "Unit Capacity", value: "STABLE", icon: Users, color: "text-sky-600", trend: "Normal operation", trendType: "up" },
-          { title: "Telemetry Status", value: "N/A", icon: Activity, color: "text-amber-600", trend: "Link required", trendType: "down" },
+          { title: "Manual Entry Mode", value: "ACTIVE", icon: Activity, color: "text-emerald-600", trend: "Nurse direct recording", trendType: "up" },
           { title: "Response Latency", value: "OPTIMAL", icon: Clock, color: "text-emerald-600", trend: "Stable", trendType: "up" },
           ...baseStats
         ];
@@ -175,8 +175,8 @@ export default function DashboardPage() {
               <History className="h-5 w-5" />
             </div>
             <div className="text-left">
-              <p className="font-bold text-slate-900">Vitals History</p>
-              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Telemetry Feed</p>
+              <p className="font-bold text-slate-900">Vitals Log</p>
+              <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Historical Entries</p>
             </div>
           </Button>
         </div>

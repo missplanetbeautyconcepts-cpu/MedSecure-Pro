@@ -68,8 +68,8 @@ export default function VitalsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Vitals Monitoring Station</h1>
-          <p className="text-slate-500 text-sm">Select a patient to record new physiological telemetry data.</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Physiological Record Station</h1>
+          <p className="text-slate-500 text-sm">Select a patient to document new manual vitals entries.</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 w-72">
           <Search className="h-4 w-4 text-slate-400" />

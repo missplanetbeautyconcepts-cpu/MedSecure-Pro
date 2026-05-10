@@ -39,16 +39,9 @@ export default function LabResultEntryPage() {
     comments: ""
   });
 
-  const { data: record, isLoading: isLoadingRecord } = useQuery({
-    queryKey: ["record", recordId],
-    queryFn: () => apiService.getRecordDetail(Number(recordId), { 
-      username: "", 
-      role: "", 
-      password: "", 
-      reauth_password: "" 
-    } as ReAuthRequest).then(res => res.data),
-    retry: false
-  });
+  // We don't fetch full record metadata on mount to avoid 401 re-auth errors.
+  // The record ID is available from the URL params.
+  const isLoadingRecord = false;
 
   const { data: labHistory } = useQuery({
     queryKey: ["lab-results", recordId],
