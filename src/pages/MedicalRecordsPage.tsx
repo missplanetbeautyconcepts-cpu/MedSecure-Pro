@@ -90,7 +90,7 @@ function RecordDetail({ record, onClose }: { record: RecordFull; onClose: () => 
   const { data: vitalsHistory, isLoading: isLoadingVitals } = useQuery({
     queryKey: ["vitals-history", record.id],
     queryFn: () => apiService.getVitalsHistory(record.id).then(res => res.data),
-    enabled: activeTab === "vitals"
+    enabled: !!record.id
   });
 
   const chartData = useMemo(() => {
